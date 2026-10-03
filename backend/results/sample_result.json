@@ -1,0 +1,13 @@
+{
+  "id": "exp-001",
+  "name": "Classical VPN Evaluation",
+  "vpnType": "Classical OpenVPN",
+  "attack": "Replay / MITM Test",
+  "expected": "Secure Encrypted Stream",
+  "observed": "AES-256-GCM Verified",
+  "status": "PASS",
+  "latency": "12.4 ms",
+  "cpu": "18.5%",
+  "cipher": "AES-256-GCM",
+  "timestamp": "2026-07-29T14:00:00"
+}
