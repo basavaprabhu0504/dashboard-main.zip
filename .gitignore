@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.vite/
+.DS_Store
+*.log
+.env
+*.env
+src/.env
+backend/.env
+__pycache__/
+*.pyc
+backend/venv/
+backend/venv_win/
+venv/
+.codesight/
