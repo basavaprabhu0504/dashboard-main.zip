@@ -23,6 +23,7 @@ import {
   getExperimentControllerStatus,
 } from '../services/experimentService';
 import { useVpnStatus } from '../hooks/useVpnStatus';
+import { saveExperimentHistoryItem } from '../services/experimentHistory';
 
 export default function AttackControl() {
   const { status: vpnStatus, stopVpn } = useVpnStatus();
@@ -80,16 +81,18 @@ export default function AttackControl() {
       const outcome = await runSecurityExperiment(experiment.payload);
 
       if (outcome.success) {
-        setCurrentResult({
+        const completedResult = {
           experiment,
           success: true,
           status: outcome.status,
           outcome: outcome.outcome,
           data: outcome.data,
           completedAt: new Date().toLocaleTimeString(),
-        });
+        };
+        setCurrentResult(completedResult);
+        saveExperimentHistoryItem(completedResult);
       } else {
-        setCurrentResult({
+        const completedResult = {
           experiment,
           success: false,
           status: outcome.status,
@@ -97,7 +100,9 @@ export default function AttackControl() {
           error: outcome.error,
           data: outcome.data,
           completedAt: new Date().toLocaleTimeString(),
-        });
+        };
+        setCurrentResult(completedResult);
+        saveExperimentHistoryItem(completedResult);
         setErrorMessage(outcome.error || 'Experiment execution was inconclusive or failed.');
       }
     } catch (err) {
