@@ -11,12 +11,12 @@ export default function Performance() {
   const charts = performanceData?.charts;
 
   const metrics = [
-    { title: 'Average Handshake', value: summary?.avgHandshake || '18 ms', subtitle: 'OpenVPN Handshake', tone: 'green' },
-    { title: 'Maximum Latency', value: summary?.maxLatency || '22 ms', subtitle: 'ICMP Tunnel Ping', tone: 'blue' },
-    { title: 'Average CPU', value: summary?.avgCpu || '18%', subtitle: 'Server VM CPU', tone: 'yellow' },
-    { title: 'Average Memory', value: summary?.avgMemory || '45%', subtitle: 'Server RAM Used', tone: 'green' },
-    { title: 'Packets/sec', value: summary?.packetsPerSec || '1.4k', subtitle: 'Peak throughput', tone: 'blue' },
-    { title: 'Connection Stability', value: summary?.stability || '99.2%', subtitle: 'Ping reliability', tone: 'green' },
+    { title: 'Average Handshake', value: summary?.avgHandshake || 'N/A', subtitle: 'Measured backend value', tone: 'green' },
+    { title: 'Maximum Latency', value: summary?.maxLatency || 'N/A', subtitle: 'Measured backend value', tone: 'blue' },
+    { title: 'Average CPU', value: summary?.avgCpu || 'N/A', subtitle: 'Measured backend value', tone: 'yellow' },
+    { title: 'Average Memory', value: summary?.avgMemory || 'N/A', subtitle: 'Measured backend value', tone: 'green' },
+    { title: 'Packets/sec', value: summary?.packetsPerSec || 'N/A', subtitle: 'Measured backend value', tone: 'blue' },
+    { title: 'Connection Stability', value: summary?.stability || 'N/A', subtitle: 'Measured backend value', tone: 'green' },
   ];
 
   const handshakeData = charts?.handshake?.length ? charts.handshake : mockData.performance.handshake;
