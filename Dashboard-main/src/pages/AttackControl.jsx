@@ -141,10 +141,10 @@ export default function AttackControl() {
             <span className="flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 text-xs font-mono text-slate-300">
               <span
                 className={`h-2 w-2 rounded-full ${
-                  controllerState?.online ? 'bg-emerald-400' : 'bg-rose-500'
+                  controllerState?.available ? 'bg-emerald-400' : 'bg-rose-500'
                 }`}
               />
-              Controller {controllerState?.online ? 'Ready (:8010)' : 'Offline'}
+              Controller {controllerState?.available ? 'Ready (:8010)' : 'Offline'}
             </span>
           </div>
         </div>
