@@ -223,14 +223,3 @@ export async function runSecurityExperiment(payload) {
   };
 }
 
-/**
- * Emergency stop / cleanup for experiment processes
- * Endpoint: POST http://192.168.56.101:8010/experiments/stop
- */
-export async function stopExperiment() {
-  const res = await api.post('/experiments/stop', {}, {
-    baseUrl: CLIENT_EXPERIMENT_URL,
-    timeout: 10000,
-  });
-  return res.ok && res.data?.success === true;
-}
