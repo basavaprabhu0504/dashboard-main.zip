@@ -7,9 +7,9 @@ export function useLogs() {
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
-    const data = await api.get('/logs');
-    if (data) {
-      setLogs(data);
+    const response = await api.get('/logs');
+    if (response.ok && response.data) {
+      setLogs(response.data);
     }
     setLoading(false);
   }, []);
