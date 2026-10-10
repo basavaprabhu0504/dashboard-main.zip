@@ -10,6 +10,7 @@ import {
   sendChatMessage as apiSendChatMessage,
   VPN_MODES,
 } from '../services/vpnService';
+import { getExperimentControllerStatus } from '../services/experimentService';
 
 const initialStatus = {
   available: false,
