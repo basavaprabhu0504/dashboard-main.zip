@@ -145,7 +145,7 @@ export default function Comparison() {
       <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-panel">
         <h2 className="text-xl font-bold text-slate-100">Comparative Security & Performance Radar</h2>
         <p className="text-xs text-slate-400 mt-1 mb-6">
-          Quantifies quantum security, active attack defense, and latency trade-offs across all evaluated architectures.
+          Illustrative qualitative visualization; do not cite these scores as measured experimental results.
         </p>
         <div className="max-w-2xl mx-auto py-2">
           <Radar
