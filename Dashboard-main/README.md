@@ -31,48 +31,43 @@ Before opening the dashboard, run the following long-lived processes:
 
 Use the exact launch commands and prerequisites in `QVPN-Dashboard-Handoff.md` at the repository root.
 
-```ini
-QVPN_SERVER_AGENT_URL=http://192.168.56.102:8000
-QVPN_CLIENT_AGENT_URL=http://192.168.56.101:8000
-QVPN_AGENT_TIMEOUT_SECONDS=8
-```
+## Frontend setup
 
-### 2. Start Flask Backend
-
-```bash
-py -m pip install -r backend/requirements.txt
-py backend/app.py
-```
-
-### 3. Start Frontend Dashboard
-
-```bash
+```powershell
+cd Dashboard-main
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open `http://localhost:3001`.
 
-### QVPN control-agent integration
-
-The browser communicates only with the dashboard backend. For Classical VPN, the backend starts the server agent first, then the client agent, and checks both `/vpn/status` endpoints before displaying a connected state. Disconnect reverses that order.
-
-Copy `.env.example` to `.env` when the default addresses need to change:
+Optional frontend environment variables:
 
 ```ini
-VITE_DASHBOARD_API_BASE=/api
-VITE_DASHBOARD_REQUEST_TIMEOUT_MS=10000
+VITE_CLIENT_AGENT_URL=http://192.168.56.101:8000
+VITE_SERVER_AGENT_URL=http://192.168.56.102:8000
+VITE_CLIENT_EXPERIMENT_URL=http://192.168.56.101:8010
+VITE_DASHBOARD_REQUEST_TIMEOUT_MS=15000
+VITE_EXPERIMENT_TIMEOUT_MS=95000
 ```
 
-On a Mac, the VirtualBox host-only addresses may be unreachable; this is handled as a visible status error, not a simulated connection. Deploy by pushing the repository to GitHub, pulling it on the Windows host, configuring `backend/.env` if needed, then running `npm install`, `python backend/app.py`, and `npm run dev`. The browser does not call Ubuntu agents directly, avoiding a browser-to-agent CORS dependency.
+The Vite development proxy also exposes `/agent`, `/server-agent`, and `/experiments-proxy`. Absolute defaults are used by the current services so the browser must be able to reach the host-only VM addresses.
 
----
+## Optional legacy/telemetry backend
 
-## Key Features
+The Flask backend under `backend/` is not required for the four VPN controls, chat, or the eight security experiments. It is used only by the older results, performance, monitoring, and log pages.
 
-- **VPN Control Page**: Start/Stop Classical OpenVPN via SSH systemctl & daemon commands. Launch Python socket chat application across the tunnel.
-- **Lab Overview Page**: Real SSH health status, ping, CPU, memory, and IP layout for Ubuntu Server and Client VMs.
-- **Packet Monitoring Page**: Real-time `tcpdump -i tun0` packet capture and protocol breakdown.
-- **Performance Page**: CPU, Memory, Latency, and Handshake time-series metrics.
-- **Logs Page**: Collects live `journalctl -u openvpn*` logs over SSH with log copy, search, and download features.
-- **Results Page**: Reads dynamic evaluation result JSON files stored in `backend/results/`.
+```powershell
+py -m pip install -r backend/requirements.txt
+py backend/app.py
+```
+
+Do not treat illustrative chart data as measured evidence. Evaluator evidence must come from live agent status, V3 process logs, and experiment-controller result logs.
+
+## Verification
+
+```powershell
+npm run build
+```
+
+Then perform the live checklist in `QVPN-Dashboard-Handoff.md`: verify all four start/stop modes, real chat ACKs, V3 mutual-auth logs, both MITM outcomes, all six downgrade outcomes, controller timeouts, and mutual exclusion between normal VPN sessions and experiments.
