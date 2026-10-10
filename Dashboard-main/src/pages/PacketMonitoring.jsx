@@ -63,7 +63,7 @@ export default function PacketMonitoring() {
     },
   ];
 
-  // Saved historical/archived capture records from the verified lab test runs
+  // Illustrative UI rows only. These are not measured lab evidence.
   const archivedCaptures = [
     {
       time: '14:22:10',
@@ -136,7 +136,7 @@ export default function PacketMonitoring() {
           <span className="font-semibold text-slate-200 block mb-0.5">
             Lab Evaluation Telemetry & Saved Benchmarks
           </span>
-          Live agent status reflects the active connection mode ({currentMode?.toUpperCase()}). To preserve empirical accuracy, traffic charts and historical packet feeds below represent archived September 22 lab benchmarks across all 4 modes.
+          Live agent status above reflects the active connection mode ({currentMode?.toUpperCase()}). The charts and packet rows below are explicitly illustrative UI data, not live capture or measured experimental evidence.
         </div>
       </div>
 
@@ -156,12 +156,12 @@ export default function PacketMonitoring() {
       {/* Traffic Charts */}
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <LineChartCard
-          title="Archived Packet Throughput (packets/sec - Lab Benchmarks)"
+          title="Illustrative Packet Throughput (not measured)"
           data={mockData.packets.liveFlow}
           color="#22c55e"
         />
         <LineChartCard
-          title="Protocol Transmission Timeline (Comparative)"
+          title="Illustrative Protocol Timeline (not measured)"
           data={mockData.packets.trafficTimeline}
           color="#38bdf8"
         />
@@ -170,7 +170,7 @@ export default function PacketMonitoring() {
       {/* Protocol Breakdown & Evidence Table */}
       <div className="grid gap-6 xl:grid-cols-[0.7fr_1.3fr]">
         <PieChartCard
-          title="Traffic Distribution by Protocol Architecture"
+          title="Illustrative Traffic Distribution (not measured)"
           data={mockData.packets.packetTypes}
         />
 
@@ -178,10 +178,10 @@ export default function PacketMonitoring() {
           <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-base font-bold text-slate-100">
-                Archived Lab Captures (Saved Evaluation Evidence)
+                Illustrative Packet Rows (Not Evaluation Evidence)
               </h3>
               <p className="text-xs text-slate-400">
-                Verified test runs recorded on the host-only testbed
+                UI demonstration data; use experiment logs for verified evidence
               </p>
             </div>
 
