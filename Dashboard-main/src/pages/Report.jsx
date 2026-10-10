@@ -31,6 +31,46 @@ export default function Report() {
     };
   }, []);
 
+  const latest = history[0] || null;
+  const summary = useMemo(() => ({
+    defended: history.filter((item) => ['mitm_rejected', 'downgrade_rejected'].includes(item.outcome)).length,
+    vulnerable: history.filter((item) => ['mitm_succeeded', 'downgrade_accepted'].includes(item.outcome)).length,
+  }), [history]);
+
+  const exportJson = () => downloadFile(
+    `qvpn-experiment-results-${Date.now()}.json`,
+    JSON.stringify({ exportedAt: new Date().toISOString(), results: history }, null, 2),
+    'application/json'
+  );
+
+  const exportCsv = () => {
+    const rows = history.map((item) => [item.completedAt, item.title, item.category, item.outcome, item.success]);
+    downloadFile(
+      `qvpn-experiment-results-${Date.now()}.csv`,
+      [['Timestamp', 'Experiment', 'Category', 'Outcome', 'Completed'], ...rows]
+        .map((row) => row.map(csvCell).join(',')).join('\n'),
+      'text/csv'
+    );
+  };
+
+  const exportLogs = () => {
+    const text = history.map((item) => [
+      `=== ${item.title} ===`, `Timestamp: ${item.completedAt}`, `Outcome: ${item.outcome}`,
+      '', '[CLIENT LOG]', item.data?.client_log || 'Not returned',
+      '', '[SERVER LOG]', item.data?.server_log || 'Not returned',
+      '', '[WINDOWS ATTACKER LOG]', item.data?.attacker_log || 'Not returned',
+      '', '[PING OUTPUT]', item.data?.client_ping || 'Not returned',
+    ].join('\n')).join('\n\n');
+    downloadFile(`qvpn-evidence-${Date.now()}.txt`, text, 'text/plain');
+  };
+
+  const handleClear = () => {
+    if (window.confirm('Clear locally saved dashboard experiment history?')) {
+      clearExperimentHistory();
+      setHistory([]);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-panel">
