@@ -169,16 +169,19 @@ export async function getExperimentControllerStatus() {
     };
   }
 
+  const normalizedState = String(res.data.state || 'idle').toLowerCase();
   return {
     available: true,
-    state: res.data.state || (res.data.running ? 'RUNNING' : 'IDLE'),
-    running: res.data.running === true,
-    current: res.data.current || null,
-    last: res.data.last || null,
+    online: true,
+    state: normalizedState.toUpperCase(),
+    running: normalizedState === 'running',
+    current: normalizedState === 'running' ? res.data.result || null : null,
+    last: normalizedState === 'completed' || normalizedState === 'failed'
+      ? res.data.result || null
+      : null,
     raw: res.data,
   };
 }
-
 /**
  * Execute a security experiment action via the client controller
  * Endpoint: POST http://192.168.56.101:8010/experiments/run
@@ -222,4 +225,3 @@ export async function runSecurityExperiment(payload) {
     error: errorMessage || 'Experiment failed to complete.',
   };
 }
-
