@@ -26,9 +26,9 @@ export default function PacketMonitoring() {
       tone: vpnLiveStatus.vpnRunning ? 'green' : 'amber',
     },
     {
-      title: 'Archived Lab Packets',
+      title: 'Illustrative Packet Dataset',
       value: (14280).toLocaleString(),
-      subtitle: 'Recorded September 22 Evaluation',
+      subtitle: 'UI sample — not measured evidence',
       tone: 'cyan',
     },
     {
@@ -50,9 +50,9 @@ export default function PacketMonitoring() {
       tone: currentMode === 'hybrid_v3' ? 'green' : 'blue',
     },
     {
-      title: 'Average Frame Size',
+      title: 'Illustrative Frame Size',
       value: '128 B',
-      subtitle: 'Encapsulated Wire Format',
+      subtitle: 'UI sample — not measured evidence',
       tone: 'yellow',
     },
     {
