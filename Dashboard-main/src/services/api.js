@@ -1,4 +1,4 @@
-const DEFAULT_BASE_URL = import.meta.env.VITE_CLIENT_AGENT_URL || '/agent';
+const DEFAULT_BASE_URL = import.meta.env.VITE_DASHBOARD_API_BASE || '/api';
 const DEFAULT_TIMEOUT_MS = Number(import.meta.env.VITE_DASHBOARD_REQUEST_TIMEOUT_MS) || 15000;
 
 export async function fetchWithTimeout(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
