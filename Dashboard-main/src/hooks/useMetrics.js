@@ -7,16 +7,16 @@ export function useMetrics() {
   const [loading, setLoading] = useState(true);
 
   const fetchPackets = useCallback(async () => {
-    const data = await api.get('/packets');
-    if (data) {
-      setPacketsData(data);
+    const response = await api.get('/packets');
+    if (response.ok) {
+      setPacketsData(response.data);
     }
   }, []);
 
   const fetchPerformance = useCallback(async () => {
-    const data = await api.get('/performance');
-    if (data) {
-      setPerformanceData(data);
+    const response = await api.get('/performance');
+    if (response.ok) {
+      setPerformanceData(response.data);
     }
     setLoading(false);
   }, []);
