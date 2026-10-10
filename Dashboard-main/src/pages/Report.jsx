@@ -1,13 +1,35 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useMemo, useState } from 'react';
+import { Download, FileJson, FileText, Printer, Trash2 } from 'lucide-react';
+import { clearExperimentHistory, getExperimentHistory } from '../services/experimentHistory';
+
+function downloadFile(filename, content, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function csvCell(value) {
+  return `"${String(value ?? '').replaceAll('"', '""')}"`;
+}
 
 export default function Report() {
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [history, setHistory] = useState(() => getExperimentHistory());
 
-  const handleGenerate = () => {
-    setIsGenerating(true);
-    setTimeout(() => setIsGenerating(false), 1400);
-  };
+  useEffect(() => {
+    const refresh = () => setHistory(getExperimentHistory());
+    window.addEventListener('storage', refresh);
+    window.addEventListener('qvpn-history-updated', refresh);
+    return () => {
+      window.removeEventListener('storage', refresh);
+      window.removeEventListener('qvpn-history-updated', refresh);
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
