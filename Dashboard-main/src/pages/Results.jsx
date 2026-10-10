@@ -2,24 +2,10 @@ import { motion } from 'framer-motion';
 import StatusCard from '../components/common/StatusCard';
 import BasicTable from '../components/tables/BasicTable';
 import { useResults } from '../hooks/useResults';
-import { mockData } from '../services/mockData';
-
 export default function Results() {
   const { results, loading } = useResults();
 
-  const activeResults = results.length ? results : [
-    {
-      name: "Classical VPN Evaluation",
-      vpnType: "Classical OpenVPN",
-      attack: "Replay / MITM Test",
-      expected: "Secure Encrypted Stream",
-      observed: "AES-256-GCM Verified",
-      status: "PASS",
-      latency: "12.4 ms",
-      cpu: "18.5%",
-      cipher: "AES-256-GCM"
-    }
-  ];
+  const activeResults = results;
 
   const totalTests = activeResults.length;
   const passedTests = activeResults.filter(r => r.status === 'PASS').length;
