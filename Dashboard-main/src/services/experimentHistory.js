@@ -14,3 +14,29 @@ export function getExperimentHistory() {
     return [];
   }
 }
+
+/**
+ * Save a newly executed experiment record
+ */
+export function saveExperimentHistoryItem(item) {
+  const current = getExperimentHistory();
+  const record = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    title: item.experiment?.title || 'Security Experiment',
+    category: item.experiment?.category || 'general',
+    outcome: item.outcome,
+    success: item.success,
+    completedAt: item.completedAt || new Date().toLocaleTimeString(),
+    data: item.data || null,
+    error: item.error || null,
+  };
+
+  const next = [record, ...current].slice(0, MAX_HISTORY_ITEMS);
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    window.dispatchEvent(new Event('qvpn-history-updated'));
+  } catch (err) {
+    console.warn('Failed to save experiment history item to localStorage:', err);
+  }
+  return record;
+}
