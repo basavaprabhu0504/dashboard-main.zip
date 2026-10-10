@@ -212,7 +212,10 @@ async function verifyTunnelAfterStart(expectedMode) {
   }
 
   const finalSummary = await getVpnStatusSummary();
-  return finalSummary;
+  throw new QvpnRequestError(
+    `Start request completed, but both agents did not verify an active ${expectedMode} tunnel.`,
+    finalSummary
+  );
 }
 
 /**
