@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Download, RefreshCw, Copy, Search } from 'lucide-react';
 import { useLogs } from '../hooks/useLogs';
-import { mockData } from '../services/mockData';
 
 const tabs = ['VPN Logs', 'System Logs'];
 
@@ -11,8 +10,8 @@ export default function Logs() {
   const { logs, loading, refreshLogs } = useLogs();
 
   const currentEntries = activeTab === 'VPN Logs' 
-    ? (logs?.vpn?.length ? logs.vpn : mockData.logs.vpn)
-    : (logs?.system?.length ? logs.system : mockData.logs.system);
+    ? (logs?.vpn || [])
+    : (logs?.system || []);
 
   const filteredEntries = currentEntries.filter((entry) =>
     entry.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
