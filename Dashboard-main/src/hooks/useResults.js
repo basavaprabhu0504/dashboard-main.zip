@@ -7,9 +7,11 @@ export function useResults() {
 
   const fetchResults = useCallback(async () => {
     setLoading(true);
-    const data = await api.get('/results');
-    if (data && data.results) {
-      setResults(data.results);
+    const response = await api.get('/results');
+    if (response.ok && Array.isArray(response.data?.results)) {
+      setResults(response.data.results);
+    } else {
+      setResults([]);
     }
     setLoading(false);
   }, []);
