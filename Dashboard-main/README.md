@@ -1,28 +1,35 @@
-# Quantum VPN Security Evaluation Platform - Control Center
+# QVPN Security Evaluation Dashboard
 
-A real-time remote control dashboard and monitoring platform for evaluating Classical OpenVPN and Quantum-Safe VPNs across Ubuntu Server & Client Virtual Machines.
+React/Vite dashboard for the verified QVPN lab. The security-critical controls call the existing VM agents and experiment controllers; the dashboard does not create VPN tunnels or attack results itself.
 
-## Architecture
+## Live control architecture
 
-- **Frontend**: React, Vite, Tailwind CSS, Framer Motion, Chart.js (Runs on Windows Dashboard machine)
-- **Backend**: Python Flask REST API (runs on the Windows dashboard host)
-- **Target VMs**: Ubuntu Server VM (OpenVPN Server) & Ubuntu Client VM (OpenVPN Client)
+- Client QVPN agent: `http://192.168.56.101:8000`
+- Server QVPN agent: `http://192.168.56.102:8000`
+- Client experiment controller: `http://192.168.56.101:8010`
+- Server experiment controller: `http://192.168.56.102:8010`
+- Windows attack controller: `http://192.168.56.1:8011`
 
-```
-React Frontend (Port 3000)
-    ↓ /api proxy
-Flask Dashboard Backend (Port 5000)
-    ↓ HTTP control-agent API
-QVPN Server Agent (192.168.56.102:8000)  ←-- OpenVPN Tun0 --→  QVPN Client Agent (192.168.56.101:8000)
-```
+The frontend provides four distinct tunnel controls:
 
----
+- Classical OpenVPN: `POST /vpn/start/classical`
+- PQC ML-KEM-768: `POST /vpn/start/pqc`
+- Hybrid V2 (unauthenticated): `POST /vpn/start/hybrid-v2`
+- Hybrid V3 (authenticated transcript): `POST /vpn/start/hybrid-v3`
 
-## Setup & Running Instructions
+All tunnel modes stop through `POST /vpn/stop`. Application chat uses the real `POST /chat/send` response and has no synthetic ACK fallback.
 
-### 1. Environment Configuration
+The Security Experiments page exposes the eight verified actions through `POST /experiments/run`: V2/V3 MITM plus baseline/authenticated variants of Hybrid→PQC, Hybrid→Classical, and PQC→Classical downgrade tests. Downgrade tests are accurately labelled as a local offer-tampering harness, not an in-path interceptor.
 
-Copy `backend/.env.example` to `backend/.env`. Configure the QVPN agent URLs for Classical VPN control; SSH settings remain available for monitoring, logs, performance, and socket chat:
+## Required lab processes
+
+Before opening the dashboard, run the following long-lived processes:
+
+1. Client VM: QVPN agent on port 8000 and VM experiment controller on port 8010.
+2. Server VM: QVPN agent on port 8000 and VM experiment controller on port 8010.
+3. Windows host: attack controller on port 8011.
+
+Use the exact launch commands and prerequisites in `QVPN-Dashboard-Handoff.md` at the repository root.
 
 ```ini
 QVPN_SERVER_AGENT_URL=http://192.168.56.102:8000
