@@ -1,0 +1,756 @@
+diff --git a/Dashboard-main/README.md b/Dashboard-main/README.md
+index 879b2c2..5d69e22 100644
+--- a/Dashboard-main/README.md
++++ b/Dashboard-main/README.md
+@@ -1,71 +1,73 @@
+-# Quantum VPN Security Evaluation Platform - Control Center
++# QVPN Security Evaluation Dashboard
+ 
+-A real-time remote control dashboard and monitoring platform for evaluating Classical OpenVPN and Quantum-Safe VPNs across Ubuntu Server & Client Virtual Machines.
++React/Vite dashboard for the verified QVPN lab. The security-critical controls call the existing VM agents and experiment controllers; the dashboard does not create VPN tunnels or attack results itself.
+ 
+-## Architecture
++## Live control architecture
+ 
+-- **Frontend**: React, Vite, Tailwind CSS, Framer Motion, Chart.js (Runs on Windows Dashboard machine)
+-- **Backend**: Python Flask REST API (runs on the Windows dashboard host)
+-- **Target VMs**: Ubuntu Server VM (OpenVPN Server) & Ubuntu Client VM (OpenVPN Client)
++- Client QVPN agent: `http://192.168.56.101:8000`
++- Server QVPN agent: `http://192.168.56.102:8000`
++- Client experiment controller: `http://192.168.56.101:8010`
++- Server experiment controller: `http://192.168.56.102:8010`
++- Windows attack controller: `http://192.168.56.1:8011`
+ 
+-```
+-React Frontend (Port 3000)
+-    ↓ /api proxy
+-Flask Dashboard Backend (Port 5000)
+-    ↓ HTTP control-agent API
+-QVPN Server Agent (192.168.56.102:8000)  ←-- OpenVPN Tun0 --→  QVPN Client Agent (192.168.56.101:8000)
+-```
++The frontend provides four distinct tunnel controls:
+ 
+----
++- Classical OpenVPN: `POST /vpn/start/classical`
++- PQC ML-KEM-768: `POST /vpn/start/pqc`
++- Hybrid V2 (unauthenticated): `POST /vpn/start/hybrid-v2`
++- Hybrid V3 (authenticated transcript): `POST /vpn/start/hybrid-v3`
+ 
+-## Setup & Running Instructions
++All tunnel modes stop through `POST /vpn/stop`. Application chat uses the real `POST /chat/send` response and has no synthetic ACK fallback.
+ 
+-### 1. Environment Configuration
++The Security Experiments page exposes the eight verified actions through `POST /experiments/run`: V2/V3 MITM plus baseline/authenticated variants of Hybrid→PQC, Hybrid→Classical, and PQC→Classical downgrade tests. Downgrade tests are accurately labelled as a local offer-tampering harness, not an in-path interceptor.
+ 
+-Copy `backend/.env.example` to `backend/.env`. Configure the QVPN agent URLs for Classical VPN control; SSH settings remain available for monitoring, logs, performance, and socket chat:
++## Required lab processes
+ 
+-```ini
+-QVPN_SERVER_AGENT_URL=http://192.168.56.102:8000
+-QVPN_CLIENT_AGENT_URL=http://192.168.56.101:8000
+-QVPN_AGENT_TIMEOUT_SECONDS=8
+-```
++Before opening the dashboard, run the following long-lived processes:
+ 
+-### 2. Start Flask Backend
++1. Client VM: QVPN agent on port 8000 and VM experiment controller on port 8010.
++2. Server VM: QVPN agent on port 8000 and VM experiment controller on port 8010.
++3. Windows host: attack controller on port 8011.
+ 
+-```bash
+-py -m pip install -r backend/requirements.txt
+-py backend/app.py
+-```
++Use the exact launch commands and prerequisites in `QVPN-Dashboard-Handoff.md` at the repository root.
+ 
+-### 3. Start Frontend Dashboard
++## Frontend setup
+ 
+-```bash
++```powershell
++cd Dashboard-main
+ npm install
+ npm run dev
+ ```
+ 
+-Open [http://localhost:3000](http://localhost:3000) in your browser.
++Open `http://localhost:3001`.
+ 
+-### QVPN control-agent integration
++Optional frontend environment variables:
+ 
+-The browser communicates only with the dashboard backend. For Classical VPN, the backend starts the server agent first, then the client agent, and checks both `/vpn/status` endpoints before displaying a connected state. Disconnect reverses that order.
++```ini
++VITE_CLIENT_AGENT_URL=http://192.168.56.101:8000
++VITE_SERVER_AGENT_URL=http://192.168.56.102:8000
++VITE_CLIENT_EXPERIMENT_URL=http://192.168.56.101:8010
++VITE_DASHBOARD_REQUEST_TIMEOUT_MS=15000
++VITE_EXPERIMENT_TIMEOUT_MS=95000
++```
+ 
+-Copy `.env.example` to `.env` when the default addresses need to change:
++The Vite development proxy also exposes `/agent`, `/server-agent`, and `/experiments-proxy`. Absolute defaults are used by the current services so the browser must be able to reach the host-only VM addresses.
+ 
+-```ini
+-VITE_DASHBOARD_API_BASE=/api
+-VITE_DASHBOARD_REQUEST_TIMEOUT_MS=10000
++## Optional legacy/telemetry backend
++
++The Flask backend under `backend/` is not required for the four VPN controls, chat, or the eight security experiments. It is used only by the older results, performance, monitoring, and log pages.
++
++```powershell
++py -m pip install -r backend/requirements.txt
++py backend/app.py
+ ```
+ 
+-On a Mac, the VirtualBox host-only addresses may be unreachable; this is handled as a visible status error, not a simulated connection. Deploy by pushing the repository to GitHub, pulling it on the Windows host, configuring `backend/.env` if needed, then running `npm install`, `python backend/app.py`, and `npm run dev`. The browser does not call Ubuntu agents directly, avoiding a browser-to-agent CORS dependency.
++Do not treat illustrative chart data as measured evidence. Evaluator evidence must come from live agent status, V3 process logs, and experiment-controller result logs.
+ 
+----
++## Verification
+ 
+-## Key Features
++```powershell
++npm run build
++```
+ 
+-- **VPN Control Page**: Start/Stop Classical OpenVPN via SSH systemctl & daemon commands. Launch Python socket chat application across the tunnel.
+-- **Lab Overview Page**: Real SSH health status, ping, CPU, memory, and IP layout for Ubuntu Server and Client VMs.
+-- **Packet Monitoring Page**: Real-time `tcpdump -i tun0` packet capture and protocol breakdown.
+-- **Performance Page**: CPU, Memory, Latency, and Handshake time-series metrics.
+-- **Logs Page**: Collects live `journalctl -u openvpn*` logs over SSH with log copy, search, and download features.
+-- **Results Page**: Reads dynamic evaluation result JSON files stored in `backend/results/`.
++Then perform the live checklist in `QVPN-Dashboard-Handoff.md`: verify all four start/stop modes, real chat ACKs, V3 mutual-auth logs, both MITM outcomes, all six downgrade outcomes, controller timeouts, and mutual exclusion between normal VPN sessions and experiments.
+diff --git a/Dashboard-main/src/hooks/useLogs.js b/Dashboard-main/src/hooks/useLogs.js
+index f1534cb..ae0e291 100644
+--- a/Dashboard-main/src/hooks/useLogs.js
++++ b/Dashboard-main/src/hooks/useLogs.js
+@@ -7,9 +7,9 @@ export function useLogs() {
+ 
+   const fetchLogs = useCallback(async () => {
+     setLoading(true);
+-    const data = await api.get('/logs');
+-    if (data) {
+-      setLogs(data);
++    const response = await api.get('/logs');
++    if (response.ok && response.data) {
++      setLogs(response.data);
+     }
+     setLoading(false);
+   }, []);
+diff --git a/Dashboard-main/src/hooks/useMetrics.js b/Dashboard-main/src/hooks/useMetrics.js
+index 326cd67..b3d8609 100644
+--- a/Dashboard-main/src/hooks/useMetrics.js
++++ b/Dashboard-main/src/hooks/useMetrics.js
+@@ -7,16 +7,16 @@ export function useMetrics() {
+   const [loading, setLoading] = useState(true);
+ 
+   const fetchPackets = useCallback(async () => {
+-    const data = await api.get('/packets');
+-    if (data) {
+-      setPacketsData(data);
++    const response = await api.get('/packets');
++    if (response.ok) {
++      setPacketsData(response.data);
+     }
+   }, []);
+ 
+   const fetchPerformance = useCallback(async () => {
+-    const data = await api.get('/performance');
+-    if (data) {
+-      setPerformanceData(data);
++    const response = await api.get('/performance');
++    if (response.ok) {
++      setPerformanceData(response.data);
+     }
+     setLoading(false);
+   }, []);
+diff --git a/Dashboard-main/src/hooks/useResults.js b/Dashboard-main/src/hooks/useResults.js
+index fe7afdb..2df9356 100644
+--- a/Dashboard-main/src/hooks/useResults.js
++++ b/Dashboard-main/src/hooks/useResults.js
+@@ -7,9 +7,11 @@ export function useResults() {
+ 
+   const fetchResults = useCallback(async () => {
+     setLoading(true);
+-    const data = await api.get('/results');
+-    if (data && data.results) {
+-      setResults(data.results);
++    const response = await api.get('/results');
++    if (response.ok && Array.isArray(response.data?.results)) {
++      setResults(response.data.results);
++    } else {
++      setResults([]);
+     }
+     setLoading(false);
+   }, []);
+diff --git a/Dashboard-main/src/hooks/useVpnStatus.js b/Dashboard-main/src/hooks/useVpnStatus.js
+index 1d85a22..19fa240 100644
+--- a/Dashboard-main/src/hooks/useVpnStatus.js
++++ b/Dashboard-main/src/hooks/useVpnStatus.js
+@@ -10,6 +10,7 @@ import {
+   sendChatMessage as apiSendChatMessage,
+   VPN_MODES,
+ } from '../services/vpnService';
++import { getExperimentControllerStatus } from '../services/experimentService';
+ 
+ const initialStatus = {
+   available: false,
+@@ -98,6 +99,15 @@ export function useVpnStatus() {
+       return;
+     }
+ 
++    const experimentStatus = await getExperimentControllerStatus();
++    if (experimentStatus.available && experimentStatus.running) {
++      setMessage({
++        type: 'error',
++        text: 'Cannot start a normal VPN while a security experiment is running. Wait for the experiment to finish.',
++      });
++      return;
++    }
++
+     const modeConfig = VPN_MODES[modeKey];
+     setActionLoading(modeConfig.id);
+     setMessage({
+diff --git a/Dashboard-main/src/pages/AttackControl.jsx b/Dashboard-main/src/pages/AttackControl.jsx
+index d19aac8..a6015ac 100644
+--- a/Dashboard-main/src/pages/AttackControl.jsx
++++ b/Dashboard-main/src/pages/AttackControl.jsx
+@@ -23,6 +23,7 @@ import {
+   getExperimentControllerStatus,
+ } from '../services/experimentService';
+ import { useVpnStatus } from '../hooks/useVpnStatus';
++import { saveExperimentHistoryItem } from '../services/experimentHistory';
+ 
+ export default function AttackControl() {
+   const { status: vpnStatus, stopVpn } = useVpnStatus();
+@@ -80,16 +81,18 @@ export default function AttackControl() {
+       const outcome = await runSecurityExperiment(experiment.payload);
+ 
+       if (outcome.success) {
+-        setCurrentResult({
++        const completedResult = {
+           experiment,
+           success: true,
+           status: outcome.status,
+           outcome: outcome.outcome,
+           data: outcome.data,
+           completedAt: new Date().toLocaleTimeString(),
+-        });
++        };
++        setCurrentResult(completedResult);
++        saveExperimentHistoryItem(completedResult);
+       } else {
+-        setCurrentResult({
++        const completedResult = {
+           experiment,
+           success: false,
+           status: outcome.status,
+@@ -97,7 +100,9 @@ export default function AttackControl() {
+           error: outcome.error,
+           data: outcome.data,
+           completedAt: new Date().toLocaleTimeString(),
+-        });
++        };
++        setCurrentResult(completedResult);
++        saveExperimentHistoryItem(completedResult);
+         setErrorMessage(outcome.error || 'Experiment execution was inconclusive or failed.');
+       }
+     } catch (err) {
+@@ -141,10 +146,10 @@ export default function AttackControl() {
+             <span className="flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 text-xs font-mono text-slate-300">
+               <span
+                 className={`h-2 w-2 rounded-full ${
+-                  controllerState?.online ? 'bg-emerald-400' : 'bg-rose-500'
++                  controllerState?.available ? 'bg-emerald-400' : 'bg-rose-500'
+                 }`}
+               />
+-              Controller {controllerState?.online ? 'Ready (:8010)' : 'Offline'}
++              Controller {controllerState?.available ? 'Ready (:8010)' : 'Offline'}
+             </span>
+           </div>
+         </div>
+diff --git a/Dashboard-main/src/pages/Comparison.jsx b/Dashboard-main/src/pages/Comparison.jsx
+index f66b1e0..bb9a965 100644
+--- a/Dashboard-main/src/pages/Comparison.jsx
++++ b/Dashboard-main/src/pages/Comparison.jsx
+@@ -108,11 +108,11 @@ export default function Comparison() {
+               Cryptographic Architecture Matrix (4 Modes)
+             </h2>
+             <p className="text-xs text-slate-400 mt-1">
+-              Direct comparison of Classical OpenVPN, standalone PQC, Unauthenticated Hybrid V2, and Authenticated Hybrid V3.
++              Architecture comparison. Numerical radar and latency values are illustrative unless replaced with measured benchmark data.
+             </p>
+           </div>
+           <span className="rounded-full bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-300 border border-cyan-500/30 self-start sm:self-auto">
+-            Lab Evaluation Standard
++            Qualitative / Illustrative
+           </span>
+         </div>
+ 
+@@ -145,7 +145,7 @@ export default function Comparison() {
+       <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-panel">
+         <h2 className="text-xl font-bold text-slate-100">Comparative Security & Performance Radar</h2>
+         <p className="text-xs text-slate-400 mt-1 mb-6">
+-          Quantifies quantum security, active attack defense, and latency trade-offs across all evaluated architectures.
++          Illustrative qualitative visualization; do not cite these scores as measured experimental results.
+         </p>
+         <div className="max-w-2xl mx-auto py-2">
+           <Radar
+diff --git a/Dashboard-main/src/pages/Logs.jsx b/Dashboard-main/src/pages/Logs.jsx
+index cb12ae3..2f6276e 100644
+--- a/Dashboard-main/src/pages/Logs.jsx
++++ b/Dashboard-main/src/pages/Logs.jsx
+@@ -1,7 +1,6 @@
+ import { useState } from 'react';
+ import { Download, RefreshCw, Copy, Search } from 'lucide-react';
+ import { useLogs } from '../hooks/useLogs';
+-import { mockData } from '../services/mockData';
+ 
+ const tabs = ['VPN Logs', 'System Logs'];
+ 
+@@ -11,8 +10,8 @@ export default function Logs() {
+   const { logs, loading, refreshLogs } = useLogs();
+ 
+   const currentEntries = activeTab === 'VPN Logs' 
+-    ? (logs?.vpn?.length ? logs.vpn : mockData.logs.vpn)
+-    : (logs?.system?.length ? logs.system : mockData.logs.system);
++    ? (logs?.vpn || [])
++    : (logs?.system || []);
+ 
+   const filteredEntries = currentEntries.filter((entry) =>
+     entry.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+diff --git a/Dashboard-main/src/pages/PacketMonitoring.jsx b/Dashboard-main/src/pages/PacketMonitoring.jsx
+index 41911c2..81dd933 100644
+--- a/Dashboard-main/src/pages/PacketMonitoring.jsx
++++ b/Dashboard-main/src/pages/PacketMonitoring.jsx
+@@ -26,9 +26,9 @@ export default function PacketMonitoring() {
+       tone: vpnLiveStatus.vpnRunning ? 'green' : 'amber',
+     },
+     {
+-      title: 'Archived Lab Packets',
++      title: 'Illustrative Packet Dataset',
+       value: (14280).toLocaleString(),
+-      subtitle: 'Recorded September 22 Evaluation',
++      subtitle: 'UI sample — not measured evidence',
+       tone: 'cyan',
+     },
+     {
+@@ -50,9 +50,9 @@ export default function PacketMonitoring() {
+       tone: currentMode === 'hybrid_v3' ? 'green' : 'blue',
+     },
+     {
+-      title: 'Average Frame Size',
++      title: 'Illustrative Frame Size',
+       value: '128 B',
+-      subtitle: 'Encapsulated Wire Format',
++      subtitle: 'UI sample — not measured evidence',
+       tone: 'yellow',
+     },
+     {
+@@ -63,7 +63,7 @@ export default function PacketMonitoring() {
+     },
+   ];
+ 
+-  // Saved historical/archived capture records from the verified lab test runs
++  // Illustrative UI rows only. These are not measured lab evidence.
+   const archivedCaptures = [
+     {
+       time: '14:22:10',
+@@ -136,7 +136,7 @@ export default function PacketMonitoring() {
+           <span className="font-semibold text-slate-200 block mb-0.5">
+             Lab Evaluation Telemetry & Saved Benchmarks
+           </span>
+-          Live agent status reflects the active connection mode ({currentMode?.toUpperCase()}). To preserve empirical accuracy, traffic charts and historical packet feeds below represent archived September 22 lab benchmarks across all 4 modes.
++          Live agent status above reflects the active connection mode ({currentMode?.toUpperCase()}). The charts and packet rows below are explicitly illustrative UI data, not live capture or measured experimental evidence.
+         </div>
+       </div>
+ 
+@@ -156,12 +156,12 @@ export default function PacketMonitoring() {
+       {/* Traffic Charts */}
+       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+         <LineChartCard
+-          title="Archived Packet Throughput (packets/sec - Lab Benchmarks)"
++          title="Illustrative Packet Throughput (not measured)"
+           data={mockData.packets.liveFlow}
+           color="#22c55e"
+         />
+         <LineChartCard
+-          title="Protocol Transmission Timeline (Comparative)"
++          title="Illustrative Protocol Timeline (not measured)"
+           data={mockData.packets.trafficTimeline}
+           color="#38bdf8"
+         />
+@@ -170,7 +170,7 @@ export default function PacketMonitoring() {
+       {/* Protocol Breakdown & Evidence Table */}
+       <div className="grid gap-6 xl:grid-cols-[0.7fr_1.3fr]">
+         <PieChartCard
+-          title="Traffic Distribution by Protocol Architecture"
++          title="Illustrative Traffic Distribution (not measured)"
+           data={mockData.packets.packetTypes}
+         />
+ 
+@@ -178,10 +178,10 @@ export default function PacketMonitoring() {
+           <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+             <div>
+               <h3 className="text-base font-bold text-slate-100">
+-                Archived Lab Captures (Saved Evaluation Evidence)
++                Illustrative Packet Rows (Not Evaluation Evidence)
+               </h3>
+               <p className="text-xs text-slate-400">
+-                Verified test runs recorded on the host-only testbed
++                UI demonstration data; use experiment logs for verified evidence
+               </p>
+             </div>
+ 
+diff --git a/Dashboard-main/src/pages/Performance.jsx b/Dashboard-main/src/pages/Performance.jsx
+index c319750..c7f2277 100644
+--- a/Dashboard-main/src/pages/Performance.jsx
++++ b/Dashboard-main/src/pages/Performance.jsx
+@@ -11,12 +11,12 @@ export default function Performance() {
+   const charts = performanceData?.charts;
+ 
+   const metrics = [
+-    { title: 'Average Handshake', value: summary?.avgHandshake || '18 ms', subtitle: 'OpenVPN Handshake', tone: 'green' },
+-    { title: 'Maximum Latency', value: summary?.maxLatency || '22 ms', subtitle: 'ICMP Tunnel Ping', tone: 'blue' },
+-    { title: 'Average CPU', value: summary?.avgCpu || '18%', subtitle: 'Server VM CPU', tone: 'yellow' },
+-    { title: 'Average Memory', value: summary?.avgMemory || '45%', subtitle: 'Server RAM Used', tone: 'green' },
+-    { title: 'Packets/sec', value: summary?.packetsPerSec || '1.4k', subtitle: 'Peak throughput', tone: 'blue' },
+-    { title: 'Connection Stability', value: summary?.stability || '99.2%', subtitle: 'Ping reliability', tone: 'green' },
++    { title: 'Average Handshake', value: summary?.avgHandshake || 'N/A', subtitle: 'Measured backend value', tone: 'green' },
++    { title: 'Maximum Latency', value: summary?.maxLatency || 'N/A', subtitle: 'Measured backend value', tone: 'blue' },
++    { title: 'Average CPU', value: summary?.avgCpu || 'N/A', subtitle: 'Measured backend value', tone: 'yellow' },
++    { title: 'Average Memory', value: summary?.avgMemory || 'N/A', subtitle: 'Measured backend value', tone: 'green' },
++    { title: 'Packets/sec', value: summary?.packetsPerSec || 'N/A', subtitle: 'Measured backend value', tone: 'blue' },
++    { title: 'Connection Stability', value: summary?.stability || 'N/A', subtitle: 'Measured backend value', tone: 'green' },
+   ];
+ 
+   const handshakeData = charts?.handshake?.length ? charts.handshake : mockData.performance.handshake;
+diff --git a/Dashboard-main/src/pages/Report.jsx b/Dashboard-main/src/pages/Report.jsx
+index 18af73a..5cb4ecc 100644
+--- a/Dashboard-main/src/pages/Report.jsx
++++ b/Dashboard-main/src/pages/Report.jsx
+@@ -1,62 +1,126 @@
+-import { useState } from 'react';
+-import { motion } from 'framer-motion';
++import { useEffect, useMemo, useState } from 'react';
++import { Download, FileJson, FileText, Printer, Trash2 } from 'lucide-react';
++import { clearExperimentHistory, getExperimentHistory } from '../services/experimentHistory';
++
++function downloadFile(filename, content, type) {
++  const blob = new Blob([content], { type });
++  const url = URL.createObjectURL(blob);
++  const link = document.createElement('a');
++  link.href = url;
++  link.download = filename;
++  document.body.appendChild(link);
++  link.click();
++  link.remove();
++  URL.revokeObjectURL(url);
++}
++
++function csvCell(value) {
++  return `"${String(value ?? '').replaceAll('"', '""')}"`;
++}
+ 
+ export default function Report() {
+-  const [isGenerating, setIsGenerating] = useState(false);
++  const [history, setHistory] = useState(() => getExperimentHistory());
++
++  useEffect(() => {
++    const refresh = () => setHistory(getExperimentHistory());
++    window.addEventListener('storage', refresh);
++    window.addEventListener('qvpn-history-updated', refresh);
++    return () => {
++      window.removeEventListener('storage', refresh);
++      window.removeEventListener('qvpn-history-updated', refresh);
++    };
++  }, []);
++
++  const latest = history[0] || null;
++  const summary = useMemo(() => ({
++    defended: history.filter((item) => ['mitm_rejected', 'downgrade_rejected'].includes(item.outcome)).length,
++    vulnerable: history.filter((item) => ['mitm_succeeded', 'downgrade_accepted'].includes(item.outcome)).length,
++  }), [history]);
++
++  const exportJson = () => downloadFile(
++    `qvpn-experiment-results-${Date.now()}.json`,
++    JSON.stringify({ exportedAt: new Date().toISOString(), results: history }, null, 2),
++    'application/json'
++  );
++
++  const exportCsv = () => {
++    const rows = history.map((item) => [item.completedAt, item.title, item.category, item.outcome, item.success]);
++    downloadFile(
++      `qvpn-experiment-results-${Date.now()}.csv`,
++      [['Timestamp', 'Experiment', 'Category', 'Outcome', 'Completed'], ...rows]
++        .map((row) => row.map(csvCell).join(',')).join('\n'),
++      'text/csv'
++    );
++  };
+ 
+-  const handleGenerate = () => {
+-    setIsGenerating(true);
+-    setTimeout(() => setIsGenerating(false), 1400);
++  const exportLogs = () => {
++    const text = history.map((item) => [
++      `=== ${item.title} ===`, `Timestamp: ${item.completedAt}`, `Outcome: ${item.outcome}`,
++      '', '[CLIENT LOG]', item.data?.client_log || 'Not returned',
++      '', '[SERVER LOG]', item.data?.server_log || 'Not returned',
++      '', '[WINDOWS ATTACKER LOG]', item.data?.attacker_log || 'Not returned',
++      '', '[PING OUTPUT]', item.data?.client_ping || 'Not returned',
++    ].join('\n')).join('\n\n');
++    downloadFile(`qvpn-evidence-${Date.now()}.txt`, text, 'text/plain');
++  };
++
++  const handleClear = () => {
++    if (window.confirm('Clear locally saved dashboard experiment history?')) {
++      clearExperimentHistory();
++      setHistory([]);
++    }
+   };
+ 
+   return (
+-    <div className="space-y-6">
+-      <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-panel">
++    <div className="space-y-6 print:bg-white print:text-black">
++      <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-panel print:border-0 print:bg-white">
+         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+           <div>
+-            <h2 className="text-2xl font-semibold">Export Report</h2>
+-            <p className="mt-2 text-sm text-slate-400">Generate a polished executive brief for technical stakeholders and lab reviewers.</p>
++            <h2 className="text-2xl font-semibold">QVPN Experiment Evidence Report</h2>
++            <p className="mt-2 text-sm text-slate-400 print:text-slate-700">Built only from experiment-controller responses saved by this browser.</p>
+           </div>
+-          <div className="flex flex-wrap gap-3">
+-            <button onClick={handleGenerate} className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-cyan-300">Generate PDF Report</button>
+-            <button className="rounded-2xl border border-slate-700 bg-slate-800/70 px-4 py-2 text-slate-300">Export Logs</button>
+-            <button className="rounded-2xl border border-slate-700 bg-slate-800/70 px-4 py-2 text-slate-300">Export Graphs</button>
++          <div className="flex flex-wrap gap-2 print:hidden">
++            <button onClick={() => window.print()} className="flex items-center gap-2 rounded-xl border border-cyan-500/30 px-3 py-2 text-sm text-cyan-300"><Printer size={15} />Print / Save PDF</button>
++            <button onClick={exportJson} disabled={!history.length} className="flex items-center gap-2 rounded-xl border border-slate-700 px-3 py-2 text-sm disabled:opacity-40"><FileJson size={15} />JSON</button>
++            <button onClick={exportCsv} disabled={!history.length} className="flex items-center gap-2 rounded-xl border border-slate-700 px-3 py-2 text-sm disabled:opacity-40"><Download size={15} />CSV</button>
++            <button onClick={exportLogs} disabled={!history.length} className="flex items-center gap-2 rounded-xl border border-slate-700 px-3 py-2 text-sm disabled:opacity-40"><FileText size={15} />Evidence Logs</button>
++            <button onClick={handleClear} disabled={!history.length} className="flex items-center gap-2 rounded-xl border border-rose-500/30 px-3 py-2 text-sm text-rose-300 disabled:opacity-40"><Trash2 size={15} />Clear</button>
+           </div>
+         </div>
+-        {isGenerating && (
+-          <div className="mt-5 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-sm text-cyan-300">
+-            Report generation in progress… preparing executive summary, comparison analysis, and packet insights.
+-          </div>
+-        )}
+       </div>
+ 
+-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-panel">
+-          <h3 className="text-lg font-semibold">Report Preview</h3>
+-          <div className="mt-4 space-y-4 text-sm text-slate-300">
+-            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+-              <p className="font-semibold text-slate-100">Executive Summary</p>
+-              <p className="mt-2">Quantum-safe transport demonstrated resilience against downgrade and replay conditions while preserving strong throughput.</p>
+-            </div>
+-            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+-              <p className="font-semibold text-slate-100">Experiment Overview</p>
+-              <p className="mt-2">The lab successfully validated hybrid handshake efficiency, detection coverage, and packet integrity.</p>
+-            </div>
+-            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+-              <p className="font-semibold text-slate-100">Final Verdict</p>
+-              <p className="mt-2">Hybrid architecture produced the strongest performance-security balance and is the preferred candidate for further evaluation.</p>
+-            </div>
+-          </div>
+-        </motion.div>
+-        <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-panel">
+-          <h3 className="text-lg font-semibold">Export Options</h3>
+-          <div className="mt-4 grid gap-3">
+-            <button className="rounded-2xl border border-slate-700 bg-slate-800/70 px-4 py-3 text-left text-slate-300">Download CSV</button>
+-            <button className="rounded-2xl border border-slate-700 bg-slate-800/70 px-4 py-3 text-left text-slate-300">Download JSON</button>
+-            <button className="rounded-2xl border border-slate-700 bg-slate-800/70 px-4 py-3 text-left text-slate-300">Download Screenshots</button>
+-          </div>
+-        </div>
++      <div className="grid gap-4 md:grid-cols-3">
++        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4"><p className="text-xs text-slate-400">Saved Runs</p><p className="mt-1 text-2xl font-bold">{history.length}</p></div>
++        <div className="rounded-2xl border border-emerald-900 bg-slate-900/70 p-4"><p className="text-xs text-slate-400">Attacks Rejected</p><p className="mt-1 text-2xl font-bold text-emerald-300">{summary.defended}</p></div>
++        <div className="rounded-2xl border border-amber-900 bg-slate-900/70 p-4"><p className="text-xs text-slate-400">Baseline Attacks Accepted</p><p className="mt-1 text-2xl font-bold text-amber-300">{summary.vulnerable}</p></div>
+       </div>
++
++      {!latest ? (
++        <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-8 text-center text-slate-400">No saved evidence yet. Run a Security Experiment first.</div>
++      ) : (
++        <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 print:border-slate-300 print:bg-white">
++          <h3 className="text-lg font-semibold">Latest Result</h3>
++          <dl className="mt-4 grid gap-3 sm:grid-cols-2 text-sm">
++            <div><dt className="text-slate-500">Experiment</dt><dd>{latest.title}</dd></div>
++            <div><dt className="text-slate-500">Timestamp</dt><dd>{latest.completedAt}</dd></div>
++            <div><dt className="text-slate-500">Outcome</dt><dd className="font-semibold">{latest.outcome}</dd></div>
++            <div><dt className="text-slate-500">Controller completion</dt><dd>{latest.success ? 'Completed' : 'Failed / inconclusive'}</dd></div>
++          </dl>
++          {['client_log', 'server_log', 'attacker_log', 'client_ping'].map((key) => latest.data?.[key] && (
++            <section key={key} className="mt-5">
++              <h4 className="mb-2 text-sm font-semibold uppercase text-slate-400">{key.replaceAll('_', ' ')}</h4>
++              <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-xs text-slate-300 print:max-h-none print:bg-slate-100 print:text-black">{latest.data[key]}</pre>
++            </section>
++          ))}
++        </div>
++      )}
++
++      {history.length > 1 && (
++        <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 print:border-slate-300 print:bg-white">
++          <h3 className="text-lg font-semibold">Run History</h3>
++          <div className="mt-4 overflow-x-auto"><table className="min-w-full text-sm"><thead><tr className="text-left text-slate-400"><th className="p-2">Time</th><th className="p-2">Experiment</th><th className="p-2">Outcome</th></tr></thead><tbody>{history.map((item) => <tr key={item.id} className="border-t border-slate-800"><td className="p-2">{item.completedAt}</td><td className="p-2">{item.title}</td><td className="p-2 font-mono">{item.outcome}</td></tr>)}</tbody></table></div>
++        </div>
++      )}
+     </div>
+   );
+ }
+diff --git a/Dashboard-main/src/pages/Results.jsx b/Dashboard-main/src/pages/Results.jsx
+index a8bc9aa..59f6a1b 100644
+--- a/Dashboard-main/src/pages/Results.jsx
++++ b/Dashboard-main/src/pages/Results.jsx
+@@ -2,24 +2,11 @@ import { motion } from 'framer-motion';
+ import StatusCard from '../components/common/StatusCard';
+ import BasicTable from '../components/tables/BasicTable';
+ import { useResults } from '../hooks/useResults';
+-import { mockData } from '../services/mockData';
+ 
+ export default function Results() {
+   const { results, loading } = useResults();
+ 
+-  const activeResults = results.length ? results : [
+-    {
+-      name: "Classical VPN Evaluation",
+-      vpnType: "Classical OpenVPN",
+-      attack: "Replay / MITM Test",
+-      expected: "Secure Encrypted Stream",
+-      observed: "AES-256-GCM Verified",
+-      status: "PASS",
+-      latency: "12.4 ms",
+-      cpu: "18.5%",
+-      cipher: "AES-256-GCM"
+-    }
+-  ];
++  const activeResults = results;
+ 
+   const totalTests = activeResults.length;
+   const passedTests = activeResults.filter(r => r.status === 'PASS').length;
+@@ -39,8 +26,8 @@ export default function Results() {
+         <StatusCard title="Total Experiments" value={totalTests.toString()} subtitle="Stored JSON files" tone="blue" />
+         <StatusCard title="Passed" value={passedTests.toString()} subtitle="Verified secure" tone="green" />
+         <StatusCard title="Failed" value={(totalTests - passedTests).toString()} subtitle="Unexpected issues" tone="yellow" />
+-        <StatusCard title="Detection Rate" value="100%" subtitle="MITM & replay" tone="green" />
+-        <StatusCard title="Security Score" value="95/100" subtitle="High resilience" tone="blue" />
++        <StatusCard title="Detection Rate" value="—" subtitle="Not calculated by API" tone="blue" />
++        <StatusCard title="Security Score" value="—" subtitle="No scoring method configured" tone="blue" />
+       </div>
+ 
+       <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-panel">
+diff --git a/Dashboard-main/src/services/api.js b/Dashboard-main/src/services/api.js
+index dcb49bd..6c70100 100644
+--- a/Dashboard-main/src/services/api.js
++++ b/Dashboard-main/src/services/api.js
+@@ -1,4 +1,4 @@
+-const DEFAULT_BASE_URL = import.meta.env.VITE_CLIENT_AGENT_URL || '/agent';
++const DEFAULT_BASE_URL = import.meta.env.VITE_DASHBOARD_API_BASE || '/api';
+ const DEFAULT_TIMEOUT_MS = Number(import.meta.env.VITE_DASHBOARD_REQUEST_TIMEOUT_MS) || 15000;
+ 
+ export async function fetchWithTimeout(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
+diff --git a/Dashboard-main/src/services/experimentHistory.js b/Dashboard-main/src/services/experimentHistory.js
+new file mode 100644
+index 0000000..a63b883
+--- /dev/null
++++ b/Dashboard-main/src/services/experimentHistory.js
+@@ -0,0 +1,34 @@
++const STORAGE_KEY = 'qvpn.experimentHistory.v1';
++const MAX_RESULTS = 50;
++
++export function getExperimentHistory() {
++  try {
++    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
++    return Array.isArray(parsed) ? parsed : [];
++  } catch {
++    return [];
++  }
++}
++
++export function saveExperimentHistoryItem(item) {
++  const history = getExperimentHistory();
++  const stored = {
++    id: `${Date.now()}-${item.experiment?.id || 'experiment'}`,
++    experimentId: item.experiment?.id || null,
++    title: item.experiment?.title || 'QVPN experiment',
++    category: item.experiment?.category || null,
++    outcome: item.outcome || 'unknown',
++    success: item.success === true,
++    completedAt: new Date().toISOString(),
++    data: item.data || null,
++    error: item.error || null,
++  };
++  localStorage.setItem(STORAGE_KEY, JSON.stringify([stored, ...history].slice(0, MAX_RESULTS)));
++  window.dispatchEvent(new Event('qvpn-history-updated'));
++  return stored;
++}
++
++export function clearExperimentHistory() {
++  localStorage.removeItem(STORAGE_KEY);
++  window.dispatchEvent(new Event('qvpn-history-updated'));
++}
+diff --git a/Dashboard-main/src/services/experimentService.js b/Dashboard-main/src/services/experimentService.js
+index 416c99c..8b3dcc7 100644
+--- a/Dashboard-main/src/services/experimentService.js
++++ b/Dashboard-main/src/services/experimentService.js
+@@ -169,16 +169,19 @@ export async function getExperimentControllerStatus() {
+     };
+   }
+ 
++  const normalizedState = String(res.data.state || 'idle').toLowerCase();
+   return {
+     available: true,
+-    state: res.data.state || (res.data.running ? 'RUNNING' : 'IDLE'),
+-    running: res.data.running === true,
+-    current: res.data.current || null,
+-    last: res.data.last || null,
++    online: true,
++    state: normalizedState.toUpperCase(),
++    running: normalizedState === 'running',
++    current: normalizedState === 'running' ? res.data.result || null : null,
++    last: normalizedState === 'completed' || normalizedState === 'failed'
++      ? res.data.result || null
++      : null,
+     raw: res.data,
+   };
+ }
+-
+ /**
+  * Execute a security experiment action via the client controller
+  * Endpoint: POST http://192.168.56.101:8010/experiments/run
+@@ -222,15 +225,3 @@ export async function runSecurityExperiment(payload) {
+     error: errorMessage || 'Experiment failed to complete.',
+   };
+ }
+-
+-/**
+- * Emergency stop / cleanup for experiment processes
+- * Endpoint: POST http://192.168.56.101:8010/experiments/stop
+- */
+-export async function stopExperiment() {
+-  const res = await api.post('/experiments/stop', {}, {
+-    baseUrl: CLIENT_EXPERIMENT_URL,
+-    timeout: 10000,
+-  });
+-  return res.ok && res.data?.success === true;
+-}
+diff --git a/Dashboard-main/src/services/vpnService.js b/Dashboard-main/src/services/vpnService.js
+index 4404b6e..c47ad7b 100644
+--- a/Dashboard-main/src/services/vpnService.js
++++ b/Dashboard-main/src/services/vpnService.js
+@@ -212,7 +212,10 @@ async function verifyTunnelAfterStart(expectedMode) {
+   }
+ 
+   const finalSummary = await getVpnStatusSummary();
+-  return finalSummary;
++  throw new QvpnRequestError(
++    `Start request completed, but both agents did not verify an active ${expectedMode} tunnel.`,
++    finalSummary
++  );
+ }
+ 
+ /**
