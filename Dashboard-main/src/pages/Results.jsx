@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import StatusCard from '../components/common/StatusCard';
 import BasicTable from '../components/tables/BasicTable';
 import { useResults } from '../hooks/useResults';
+
 export default function Results() {
   const { results, loading } = useResults();
 
@@ -25,8 +26,8 @@ export default function Results() {
         <StatusCard title="Total Experiments" value={totalTests.toString()} subtitle="Stored JSON files" tone="blue" />
         <StatusCard title="Passed" value={passedTests.toString()} subtitle="Verified secure" tone="green" />
         <StatusCard title="Failed" value={(totalTests - passedTests).toString()} subtitle="Unexpected issues" tone="yellow" />
-        <StatusCard title="Detection Rate" value="100%" subtitle="MITM & replay" tone="green" />
-        <StatusCard title="Security Score" value="95/100" subtitle="High resilience" tone="blue" />
+        <StatusCard title="Detection Rate" value="—" subtitle="Not calculated by API" tone="blue" />
+        <StatusCard title="Security Score" value="—" subtitle="No scoring method configured" tone="blue" />
       </div>
 
       <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-panel">
