@@ -108,11 +108,11 @@ export default function Comparison() {
               Cryptographic Architecture Matrix (4 Modes)
             </h2>
             <p className="text-xs text-slate-400 mt-1">
-              Direct comparison of Classical OpenVPN, standalone PQC, Unauthenticated Hybrid V2, and Authenticated Hybrid V3.
+              Architecture comparison. Numerical radar and latency values are illustrative unless replaced with measured benchmark data.
             </p>
           </div>
           <span className="rounded-full bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-300 border border-cyan-500/30 self-start sm:self-auto">
-            Lab Evaluation Standard
+            Qualitative / Illustrative
           </span>
         </div>
 
