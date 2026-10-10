@@ -186,7 +186,10 @@ export async function getExperimentControllerStatus() {
  * Execute a security experiment action via the client controller
  * Endpoint: POST http://192.168.56.101:8010/experiments/run
  * 
- * Timeout must be >= 90 seconds (we use 95s) as per handoff spec!
+ * Timeout must be >= 90 seconds (configured to 95s) to allow complete Windows MITM
+ * proxy negotiation and ICMP ping evidence capture.
+ * @param {{ kind: string, version?: string, scenario?: string, authenticated?: boolean }} payload
+ * @returns {Promise<{ success: boolean, status: number, outcome: string, data: object, error: string|null }>}
  */
 export async function runSecurityExperiment(payload) {
   const res = await api.post('/experiments/run', payload, {
