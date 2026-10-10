@@ -277,6 +277,10 @@ export const startHybridV2VPN = startHybridVPN;
 /**
  * 4. Start Authenticated Hybrid V3 VPN
  * Endpoint: POST /vpn/start/hybrid-v3 (reported mode: 'hybrid_v3')
+ * 
+ * Initiates X25519 + ML-KEM-768 hybrid key encapsulation with mutual transcript
+ * HMAC authentication. Verifies active tunnel on both client and server before resolving.
+ * @returns {Promise<{ success: boolean, message: string, status: object }>}
  */
 export async function startAuthenticatedHybridVPN() {
   const res = await api.post('/vpn/start/hybrid-v3', {}, {
