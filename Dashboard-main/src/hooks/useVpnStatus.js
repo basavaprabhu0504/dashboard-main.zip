@@ -99,6 +99,15 @@ export function useVpnStatus() {
       return;
     }
 
+    const experimentStatus = await getExperimentControllerStatus();
+    if (experimentStatus.available && experimentStatus.running) {
+      setMessage({
+        type: 'error',
+        text: 'Cannot start a normal VPN while a security experiment is running. Wait for the experiment to finish.',
+      });
+      return;
+    }
+
     const modeConfig = VPN_MODES[modeKey];
     setActionLoading(modeConfig.id);
     setMessage({
