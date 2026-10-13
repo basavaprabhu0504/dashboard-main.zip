@@ -2,8 +2,6 @@ export const mockData = {
   project: {
     name: 'Quantum VPN Security Evaluation Platform',
     description: 'Enterprise-grade command center for evaluating VPN resilience, attack simulations, and traffic analysis within isolated lab environments.',
-    team: ['Aaditya V', 'Darshan N', 'BasavaPrabhu', 'Bhargavi'],
-    guide: 'Bhavana',
     status: 'Active Experiment',
     currentExperiment: 'Hybrid Tunnel Resilience Test',
     vpnStatus: 'Connected',

@@ -1,13 +1,43 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, ArrowRight, FileText, ShieldAlert, TerminalSquare, RefreshCw } from 'lucide-react';
 import StatusCard from '../components/common/StatusCard';
 import { mockData } from '../services/mockData';
 import { useVpnStatus } from '../hooks/useVpnStatus';
+import { getExperimentHistory } from '../services/experimentHistory';
 import { useNavigate } from 'react-router-dom';
 
 export default function Home() {
   const { status, loading, startClassicalVpn, actionLoading, message } = useVpnStatus();
   const navigate = useNavigate();
+  const [historyItems, setHistoryItems] = useState(() => getExperimentHistory());
+
+  useEffect(() => {
+    const update = () => setHistoryItems(getExperimentHistory());
+    window.addEventListener('qvpn-history-updated', update);
+    window.addEventListener('storage', update);
+    return () => {
+      window.removeEventListener('qvpn-history-updated', update);
+      window.removeEventListener('storage', update);
+    };
+  }, []);
+
+  const recentEvents = historyItems.slice(0, 5).map((item) => {
+    const isSuccess = item.success || item.outcome?.includes('rejected');
+    const color = item.outcome === 'mitm_rejected' || item.outcome === 'downgrade_rejected'
+      ? 'green'
+      : item.outcome === 'mitm_succeeded' || item.outcome === 'downgrade_accepted'
+      ? 'amber'
+      : item.success ? 'blue' : 'red';
+
+    return {
+      id: item.id,
+      title: item.title,
+      time: item.completedAt ? new Date(item.completedAt).toLocaleTimeString() : 'Recent',
+      detail: `Outcome: ${item.outcome?.replace('_', ' ').toUpperCase()} • ${item.category?.toUpperCase() || 'SECURITY'}`,
+      color,
+    };
+  });
 
   const liveStats = [
     {
@@ -56,10 +86,6 @@ export default function Home() {
             <p className="text-sm uppercase tracking-[0.3em] text-cyan-400">Mission Control Center</p>
             <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">{mockData.project.name}</h1>
             <p className="mt-3 max-w-2xl text-sm text-slate-300 sm:text-base">{mockData.project.description}</p>
-            <div className="mt-5 flex flex-wrap gap-3 text-sm">
-              <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-cyan-300">Team: {mockData.project.team.join(', ')}</span>
-              <span className="rounded-full border border-slate-700 px-3 py-1 text-slate-300">Guide: {mockData.project.guide}</span>
-            </div>
           </div>
           <div className={`rounded-2xl border ${status.vpnRunning ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-rose-500/30 bg-rose-500/10 text-rose-300'} p-4`}>
             <div className="flex items-center gap-2 text-sm font-medium">
@@ -89,25 +115,32 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold">Recent Activity</h2>
-              <p className="text-sm text-slate-400">Live experiment events from the lab control center</p>
+              <p className="text-sm text-slate-400">Live events from experiment runs and tunnel controls</p>
             </div>
             <div className={`rounded-full border px-3 py-1 text-sm ${status.vpnRunning ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300' : 'border-slate-700 bg-slate-800 text-slate-400'}`}>
               VPN {status.vpnRunning ? 'RUNNING' : 'STOPPED'}
             </div>
           </div>
           <div className="mt-6 space-y-4">
-            {mockData.timeline.map((item) => (
-              <div key={item.title} className="flex items-start gap-3">
-                <div className={`mt-1 h-3 w-3 rounded-full ${item.color === 'green' ? 'bg-emerald-400' : item.color === 'red' ? 'bg-rose-400' : item.color === 'blue' ? 'bg-cyan-400' : 'bg-amber-400'}`} />
-                <div className="flex-1 border-b border-slate-800 pb-3">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium">{item.title}</p>
-                    <p className="text-sm text-slate-400">{item.time}</p>
+            {recentEvents.length > 0 ? (
+              recentEvents.map((item) => (
+                <div key={item.id || item.title} className="flex items-start gap-3">
+                  <div className={`mt-1 h-3 w-3 rounded-full ${item.color === 'green' ? 'bg-emerald-400' : item.color === 'red' ? 'bg-rose-400' : item.color === 'blue' ? 'bg-cyan-400' : 'bg-amber-400'}`} />
+                  <div className="flex-1 border-b border-slate-800 pb-3">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium text-slate-100">{item.title}</p>
+                      <p className="text-sm text-slate-400">{item.time}</p>
+                    </div>
+                    <p className="mt-1 text-sm text-slate-400">{item.detail}</p>
                   </div>
-                  <p className="mt-1 text-sm text-slate-400">{item.detail}</p>
                 </div>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/40 p-5 text-center">
+                <p className="text-sm font-medium text-slate-300">No experiments conducted yet</p>
+                <p className="mt-1 text-xs text-slate-400">Launch a security experiment or start a VPN tunnel to record live session events.</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 

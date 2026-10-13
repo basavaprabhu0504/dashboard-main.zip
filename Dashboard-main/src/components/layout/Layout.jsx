@@ -56,7 +56,6 @@ export default function Layout({ children }) {
                 </button>
                 <div>
                   <p className="text-lg font-semibold">{mockData.project.name}</p>
-                  <p className="text-sm opacity-70">Engineering Lab • {new Date().toLocaleDateString()}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 sm:gap-3">
