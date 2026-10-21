@@ -11,8 +11,28 @@ export default function LabOverview() {
   const serverCpu = performanceData?.summary?.avgCpu || (status.serverOnline ? '18%' : '0%');
   const serverMemory = performanceData?.summary?.avgMemory || (status.serverOnline ? '45%' : '0%');
   const latency = performanceData?.summary?.maxLatency || (status.vpnRunning ? '12.4 ms' : 'Offline');
-  const clientHost = status.clientHost || 'Configured by dashboard backend';
-  const serverHost = status.serverHost || 'Configured by dashboard backend';
+  const clientHost = status.clientHost || '192.168.56.101';
+  const serverHost = status.serverHost || '192.168.56.102';
+
+  const isConnected = Boolean(status.vpnRunning);
+  const isClassical = status.mode === 'classical';
+  const activeInterface = isConnected
+    ? (status.interfaceName || (isClassical ? 'tun0' : 'qvpn0'))
+    : (isClassical || !status.mode ? 'tun0' : 'qvpn0');
+
+  // Client tunnel IP: 10.8.0.2 on Classical tun0, 10.20.0.2 on PQC/Hybrid qvpn0
+  const clientTunnelIp = isConnected
+    ? (status.connectedClient && status.connectedClient !== 'Not Connected' && status.connectedClient !== 'Unknown'
+        ? status.connectedClient
+        : (status.localIp || (isClassical ? '10.8.0.2' : '10.20.0.2')))
+    : 'Not Connected';
+
+  // Server tunnel IP: 10.8.0.1 on Classical tun0, 10.20.0.1 on PQC/Hybrid qvpn0
+  const serverTunnelIp = isConnected
+    ? (status.tunnelIP && status.tunnelIP !== 'Not Connected' && status.tunnelIP !== 'Unknown'
+        ? status.tunnelIP
+        : (status.peerIp || (isClassical ? '10.8.0.1' : '10.20.0.1')))
+    : 'Not Connected';
 
   const vms = [
     {
@@ -23,9 +43,10 @@ export default function LabOverview() {
       memory: status.clientOnline ? '38%' : '0%',
       disk: status.clientOnline ? '22%' : '0%',
       ip: clientHost,
-      tunnelIp: status.connectedClient,
+      tunnelIp: clientTunnelIp,
       ping: status.clientOnline ? 'Stable' : 'Offline',
-      tone: status.clientOnline ? 'green' : 'gray'
+      tone: status.clientOnline ? 'green' : 'gray',
+      interfaceSubtitle: `${activeInterface} interface`,
     },
     {
       name: 'Ubuntu Server VM',
@@ -35,9 +56,10 @@ export default function LabOverview() {
       memory: serverMemory,
       disk: status.serverOnline ? '28%' : '0%',
       ip: serverHost,
-      tunnelIp: status.tunnelIP,
-      ping: status.serverOnline ? (status.vpnRunning ? latency : 'Stable (No Tunnel)') : 'Offline',
-      tone: status.serverOnline ? 'green' : 'gray'
+      tunnelIp: serverTunnelIp,
+      ping: status.serverOnline ? (isConnected ? latency : 'Stable (No Tunnel)') : 'Offline',
+      tone: status.serverOnline ? 'green' : 'gray',
+      interfaceSubtitle: `${activeInterface} interface`,
     },
   ];
 
@@ -59,7 +81,7 @@ export default function LabOverview() {
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <StatusCard title="CPU Load" value={vm.cpu} subtitle="Host CPU" tone="blue" />
               <StatusCard title="Memory" value={vm.memory} subtitle="Allocated" tone="yellow" />
-              <StatusCard title="Tunnel IP" value={vm.tunnelIp} subtitle="tun0 interface" tone="purple" />
+              <StatusCard title="Tunnel IP" value={vm.tunnelIp} subtitle={vm.interfaceSubtitle || "tun0 interface"} tone={isConnected ? "purple" : "gray"} />
               <StatusCard title="SSH & Ping" value={vm.ping} subtitle={vm.ip} tone={vm.tone} />
             </div>
           </motion.div>
@@ -72,22 +94,28 @@ export default function LabOverview() {
             <h2 className="text-xl font-semibold">Network Topology</h2>
             <p className="text-sm text-slate-400">Live control-agent path between the dashboard and Ubuntu VMs</p>
           </div>
-          <div className={`rounded-full border px-3 py-1 text-sm ${status.vpnRunning ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-slate-700 bg-slate-800 text-slate-400'}`}>
-            {status.vpnRunning ? 'Tunnel Connected' : 'Tunnel Inactive'}
+          <div className={`rounded-full border px-3 py-1 text-sm ${isConnected ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-slate-700 bg-slate-800 text-slate-400'}`}>
+            {isConnected ? 'Tunnel Connected' : 'Tunnel Inactive'}
           </div>
         </div>
         <div className="mt-8 flex flex-col items-center gap-6 rounded-3xl border border-slate-800 bg-slate-950/70 p-8 lg:flex-row lg:justify-between">
           <div className="rounded-2xl border border-slate-700 p-4 text-center">
             <p className="text-sm text-slate-400">Ubuntu Client VM</p>
             <p className="mt-2 font-semibold text-slate-200">{clientHost}</p>
-            <p className="mt-1 text-xs text-cyan-400">Tunnel: {status.connectedClient}</p>
+            <p className="mt-1 text-xs text-cyan-400">Tunnel: {clientTunnelIp}</p>
           </div>
           <div className="text-cyan-300">
             <Network size={24} />
           </div>
-          <div className={`rounded-2xl border p-4 text-center ${status.vpnRunning ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300' : 'border-slate-800 bg-slate-900 text-slate-500'}`}>
-            <p className="text-sm">OpenVPN Tunnel (tun0)</p>
-            <p className="mt-2 font-semibold">{status.cipher !== 'None' ? status.cipher : 'Disconnected'}</p>
+          <div className={`rounded-2xl border p-4 text-center ${isConnected ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300' : 'border-slate-800 bg-slate-900 text-slate-500'}`}>
+            <p className="text-sm">
+              {isConnected && status.mode !== 'classical'
+                ? `Quantum Tunnel (${activeInterface})`
+                : 'OpenVPN Tunnel (tun0)'}
+            </p>
+            <p className="mt-2 font-semibold">
+              {isConnected ? (status.cipher || (isClassical ? 'AES-256-GCM' : 'Active Tunnel')) : 'Disconnected'}
+            </p>
           </div>
           <div className="text-cyan-300">
             <ShieldCheck size={24} />
@@ -95,7 +123,7 @@ export default function LabOverview() {
           <div className="rounded-2xl border border-slate-700 p-4 text-center">
             <p className="text-sm text-slate-400">Ubuntu Server VM</p>
             <p className="mt-2 font-semibold text-slate-200">{serverHost}</p>
-            <p className="mt-1 text-xs text-cyan-400">Tunnel: {status.tunnelIP}</p>
+            <p className="mt-1 text-xs text-cyan-400">Tunnel: {serverTunnelIp}</p>
           </div>
           <div className="text-amber-300">
             <Radio size={24} />
