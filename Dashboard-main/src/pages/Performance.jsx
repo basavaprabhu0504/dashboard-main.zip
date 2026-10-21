@@ -103,7 +103,7 @@ export default function Performance() {
       return {
         handshakeMs: 21,
         cryptoCipher: 'ML-KEM-768 + ChaCha20',
-        keyExchange: 'Standalone ML-KEM-768 (Kyber)',
+        keyExchange: 'Standalone ML-KEM-768',
         pqSecurity: 'Quantum-Safe (NIST FIPS 203)',
         series: [25, 22, 21, 20, 21, 21],
       };
@@ -119,7 +119,7 @@ export default function Performance() {
     }
     return {
       handshakeMs: 17,
-      cryptoCipher: 'Kyber (ML-KEM) + AES-256',
+      cryptoCipher: 'ML-KEM-768 + AES-256',
       keyExchange: 'Authenticated Hybrid V3 (HMAC Bound)',
       pqSecurity: 'Quantum-Safe & Active Tamper Proof',
       series: [20, 18, 17, 17, 16, 17],
