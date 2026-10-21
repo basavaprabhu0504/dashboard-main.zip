@@ -12,6 +12,7 @@ import Logs from './pages/Logs';
 import Results from './pages/Results';
 import Comparison from './pages/Comparison';
 import Report from './pages/Report';
+import QVPN from './pages/QVPN';
 
 function App() {
   const location = useLocation();
@@ -28,6 +29,7 @@ function App() {
         >
           <Routes location={location}>
             <Route path="/" element={<Home />} />
+            <Route path="/qvpn" element={<QVPN />} />
             <Route path="/lab" element={<LabOverview />} />
             <Route path="/vpn" element={<VPNConfiguration />} />
             <Route path="/attack" element={<AttackControl />} />
