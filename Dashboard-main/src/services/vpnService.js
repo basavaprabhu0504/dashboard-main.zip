@@ -138,6 +138,13 @@ export async function getVpnStatusSummary() {
       localIp: null,
       peerIp: null,
       transport: null,
+      connectedClient: 'Not Connected',
+      tunnelIP: 'Not Connected',
+      clientTunnelIp: 'Not Connected',
+      serverTunnelIp: 'Not Connected',
+      clientHost: '192.168.56.101',
+      serverHost: '192.168.56.102',
+      cipher: 'Disconnected',
       errors: [raw.error],
       server: null,
       client: null,
@@ -151,14 +158,37 @@ export async function getVpnStatusSummary() {
   // Note per handoff: Server can temporarily report state:"listening" while waiting; require active === true
   const serverActive = serverVpn.active === true;
   const mode = clientVpn.mode || serverVpn.mode || null;
+  const vpnRunning = clientActive && serverActive;
 
   let vpnState = 'IDLE';
-  if (clientActive && serverActive) {
+  if (vpnRunning) {
     vpnState = 'CONNECTED';
   } else if (clientActive || serverActive || clientVpn.state === 'listening' || serverVpn.state === 'listening') {
     vpnState = 'CONNECTING';
   } else if (!clientActive && !serverActive) {
     vpnState = 'DISCONNECTED';
+  }
+
+  const isClassical = mode === 'classical';
+  const defaultInterface = isClassical ? 'tun0' : (mode ? 'qvpn0' : 'tun0');
+  const interfaceName = clientVpn.interface || (vpnRunning ? defaultInterface : null);
+
+  // Determine client and server tunnel IPs (client 10.8.0.2 / server 10.8.0.1 for classical tun0)
+  let clientTunnelIp = 'Not Connected';
+  let serverTunnelIp = 'Not Connected';
+
+  if (vpnRunning) {
+    clientTunnelIp = clientVpn.local_ip || (isClassical ? '10.8.0.2' : '10.20.0.2');
+    serverTunnelIp = serverVpn.local_ip || clientVpn.peer_ip || (isClassical ? '10.8.0.1' : '10.20.0.1');
+  }
+
+  let cipher = 'Disconnected';
+  if (vpnRunning) {
+    if (isClassical) cipher = 'AES-256-GCM';
+    else if (mode === 'pqc') cipher = 'ML-KEM-768 + ChaCha20';
+    else if (mode === 'hybrid') cipher = 'X25519 + ML-KEM-768 + AES';
+    else if (mode === 'hybrid_v3') cipher = 'HMAC-Transcript Auth + ML-KEM-768';
+    else cipher = 'Active Tunnel';
   }
 
   return {
@@ -167,12 +197,19 @@ export async function getVpnStatusSummary() {
     clientOnline: true,
     serverActive,
     clientActive,
-    vpnRunning: clientActive && serverActive,
+    vpnRunning,
     vpnState,
     mode, // 'classical' | 'pqc' | 'hybrid' | 'hybrid_v3'
-    interfaceName: clientVpn.interface || (mode === 'classical' ? 'tun0' : 'qvpn0'),
-    localIp: clientVpn.local_ip || null,
-    peerIp: clientVpn.peer_ip || null,
+    interfaceName: interfaceName || (vpnRunning ? defaultInterface : null),
+    localIp: vpnRunning ? clientTunnelIp : (clientVpn.local_ip || null),
+    peerIp: vpnRunning ? serverTunnelIp : (clientVpn.peer_ip || null),
+    connectedClient: clientTunnelIp,
+    tunnelIP: serverTunnelIp,
+    clientTunnelIp,
+    serverTunnelIp,
+    clientHost: '192.168.56.101',
+    serverHost: '192.168.56.102',
+    cipher,
     server: serverVpn,
     client: clientVpn,
     errors: [],
